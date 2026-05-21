@@ -1,21 +1,20 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import SQLAlchemyError
 
-from app.db.session import get_db_session
+from app.db.session import get_engine
 
 router = APIRouter(tags=["health"])
 
 
 @router.get("/health")
-async def health_check(session: AsyncSession = Depends(get_db_session)) -> JSONResponse:
+async def health_check() -> JSONResponse:
     try:
-        await session.execute(text("SELECT 1"))
-    except SQLAlchemyError as exc:
+        async with get_engine().connect() as connection:
+            await connection.execute(text("SELECT 1"))
+    except Exception as exc:
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={"status": "degraded", "database": "error", "detail": exc.__class__.__name__},
